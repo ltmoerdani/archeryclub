@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -68,7 +67,7 @@ export default function AddMemberPage() {
       const supabase = createSupabaseBrowserClient();
 
       // Insert new member
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('members')
         .insert({
           organization_id: user.organization_id,
@@ -76,10 +75,10 @@ export default function AddMemberPage() {
           last_name: values.last_name,
           email: values.email,
           phone: values.phone,
-          date_of_birth: values.date_of_birth || null,
+          date_of_birth: values.date_of_birth ?? null,
           membership_type: values.membership_type,
-          membership_start_date: values.membership_start_date || null,
-          membership_end_date: values.membership_end_date || null,
+          membership_start_date: values.membership_start_date ?? null,
+          membership_end_date: values.membership_end_date ?? null,
           notes: values.notes,
           status: values.status,
         })
@@ -90,9 +89,10 @@ export default function AddMemberPage() {
 
       toast.success('Member added successfully!');
       router.push('/dashboard/members');
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error adding member:', error);
-      toast.error(error.message || 'Failed to add member');
+      const errorMessage = error instanceof Error ? error.message : 'Failed to add member';
+      toast.error(errorMessage);
     } finally {
       setIsSubmitting(false);
     }

@@ -2,6 +2,7 @@
 
 import React, { ReactNode, useState, useEffect } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { useOrganization } from '@/components/providers/organization-provider';
 import { useAuth } from '@/components/providers/auth-provider';
@@ -21,15 +22,17 @@ interface DashboardLayoutProps {
   children: ReactNode;
 }
 
+type UserRole = 'super_admin' | 'admin' | 'coach' | 'member';
+
 interface NavItem {
   title: string;
   href: string;
   icon: React.ReactNode;
   // Roles that can see this nav item - undefined means all roles can see it
-  roles?: ('super_admin' | 'admin' | 'coach' | 'member')[];
+  roles?: UserRole[];
 }
 
-export default function DashboardLayout({ children }: DashboardLayoutProps) {
+export default function DashboardLayout({ children }: Readonly<DashboardLayoutProps>) {
   const pathname = usePathname();
   const { organization } = useOrganization();
   const { user, signOut } = useAuth();
@@ -78,7 +81,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
   // Filter nav items based on user role
   const filteredNavItems = navItems.filter(
-    (item) => !item.roles || (user?.role && item.roles.includes(user.role as any))
+    (item) => !item.roles || (user?.role && item.roles.includes(user.role as UserRole))
   );
 
   const toggleSidebar = () => {
@@ -108,18 +111,20 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         <div className="flex items-center justify-between h-16 px-4 border-b">
           <Link href="/dashboard" className="flex items-center space-x-2">
             {organization?.logo_url ? (
-              <img
+              <Image
                 src={organization.logo_url}
                 alt={organization?.name || 'Archery Club'}
+                width={32}
+                height={32}
                 className="h-8 w-8 object-contain"
               />
             ) : (
               <div className="h-8 w-8 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold">
-                {organization?.name?.charAt(0) || 'A'}
+                {organization?.name?.charAt(0) ?? 'A'}
               </div>
             )}
             <span className="text-lg font-semibold truncate">
-              {organization?.name || 'Archery Club'}
+              {organization?.name ?? 'Archery Club'}
             </span>
           </Link>
           <button
@@ -164,10 +169,22 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
       {/* Mobile overlay */}
       {isMobileMenuOpen && (
-        <div
-          className="fixed inset-0 z-40 bg-black bg-opacity-50 lg:hidden"
-          onClick={() => setIsMobileMenuOpen(false)}
-        />
+        <div className="fixed inset-0 z-40 lg:hidden">
+          {/* Semi-transparent backdrop */}
+          <div 
+            className="absolute inset-0 bg-black bg-opacity-50"
+            aria-hidden="true"
+            onClick={() => setIsMobileMenuOpen(false)}
+          />
+          {/* Hidden close button for accessibility */}
+          <button
+            className="sr-only"
+            onClick={() => setIsMobileMenuOpen(false)}
+            aria-label="Close mobile menu"
+          >
+            Close Menu
+          </button>
+        </div>
       )}
 
       {/* Main content */}
@@ -204,18 +221,20 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           <div className="flex items-center justify-between h-16 px-4 border-b">
             <Link href="/dashboard" className="flex items-center space-x-2">
               {organization?.logo_url ? (
-                <img
+                <Image
                   src={organization.logo_url}
                   alt={organization?.name || 'Archery Club'}
+                  width={32}
+                  height={32}
                   className="h-8 w-8 object-contain"
                 />
               ) : (
                 <div className="h-8 w-8 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold">
-                  {organization?.name?.charAt(0) || 'A'}
+                  {organization?.name?.charAt(0) ?? 'A'}
                 </div>
               )}
               <span className="text-lg font-semibold truncate">
-                {organization?.name || 'Archery Club'}
+                {organization?.name ?? 'Archery Club'}
               </span>
             </Link>
             <button

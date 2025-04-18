@@ -33,10 +33,10 @@ type RegisterFormValues = z.infer<typeof registerFormSchema>;
 function SubdomainAvailabilityMessage({ 
   isChecking, 
   isAvailable 
-}: { 
+}: Readonly<{ 
   isChecking: boolean; 
   isAvailable: boolean | null 
-}) {
+}>) {
   if (isChecking) {
     return <p className="text-sm text-gray-500">Checking availability...</p>;
   }

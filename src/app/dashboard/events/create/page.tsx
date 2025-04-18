@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import type { Resolver } from 'react-hook-form';
 import { z } from 'zod';
 import { toast } from 'sonner';
 
@@ -56,7 +57,7 @@ export default function CreateEventPage() {
 
   // Initialize the form
   const form = useForm<EventFormValues>({
-    resolver: zodResolver(eventFormSchema),
+    resolver: zodResolver(eventFormSchema) as Resolver<EventFormValues>,
     defaultValues: {
       title: '',
       description: '',
@@ -77,7 +78,6 @@ export default function CreateEventPage() {
   });
 
   // Access form data
-  const eventType = form.watch('event_type');
   const isRegistrationRequired = form.watch('registration_required');
   const isRecurring = form.watch('is_recurring');
 
@@ -97,7 +97,7 @@ export default function CreateEventPage() {
       const endDateTime = new Date(`${values.end_date}T${values.end_time}`);
 
       // Insert new event
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('events')
         .insert({
           organization_id: user.organization_id,
@@ -123,9 +123,10 @@ export default function CreateEventPage() {
 
       toast.success('Event created successfully!');
       router.push('/dashboard/events');
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error creating event:', error);
-      toast.error(error.message || 'Failed to create event');
+      const errorMessage = error instanceof Error ? error.message : 'Failed to create event';
+      toast.error(errorMessage);
     } finally {
       setIsSubmitting(false);
     }
@@ -328,7 +329,7 @@ export default function CreateEventPage() {
                           <FormLabel>Recurring Pattern</FormLabel>
                           <Select 
                             onValueChange={field.onChange} 
-                            value={field.value || ''}
+                            value={field.value ?? ''}
                           >
                             <FormControl>
                               <SelectTrigger>

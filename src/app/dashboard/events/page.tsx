@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { CalendarPlus, Search, Filter, MoreHorizontal, Calendar, Clock, MapPin, Users } from 'lucide-react';
+import { CalendarPlus, Search, Calendar, Clock, MapPin, Users } from 'lucide-react';
 import { toast } from 'sonner';
 
 // Define event type
@@ -26,6 +26,187 @@ type Event = {
   max_participants: number;
   created_at: string;
 };
+
+function LoadingState() {
+  return <div className="py-8 text-center">Loading events...</div>;
+}
+
+function EmptyState({ 
+  searchQuery, 
+  onCreateEvent 
+}: Readonly<{ 
+  searchQuery: string;
+  onCreateEvent: () => void;
+}>) {
+  return (
+    <div className="py-8 text-center">
+      <p className="text-muted-foreground">No events found</p>
+      {searchQuery && (
+        <p className="text-sm text-muted-foreground mt-1">
+          Try adjusting your search or filters
+        </p>
+      )}
+      <Button 
+        variant="outline" 
+        className="mt-4"
+        onClick={onCreateEvent}
+      >
+        <CalendarPlus className="h-4 w-4 mr-2" />
+        Create Your First Event
+      </Button>
+    </div>
+  );
+}
+
+function getEventTypeColor(eventType: string): string {
+  switch (eventType) {
+    case 'competition':
+      return 'bg-orange-500';
+    case 'training':
+      return 'bg-blue-500';
+    case 'workshop':
+      return 'bg-green-500';
+    case 'meeting':
+      return 'bg-purple-500';
+    default:
+      return 'bg-gray-500';
+  }
+}
+
+function getStatusBadgeStyles(status: string): string {
+  switch (status) {
+    case 'scheduled':
+      return 'bg-green-100 text-green-800';
+    case 'cancelled':
+      return 'bg-red-100 text-red-800';
+    default:
+      return 'bg-gray-100 text-gray-800';
+  }
+}
+
+function EventsList({ 
+  events, 
+  formatDate, 
+  formatTime 
+}: Readonly<{ 
+  events: Event[];
+  formatDate: (date: string) => string;
+  formatTime: (date: string) => string;
+}>) {
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-2">
+      {events.map((event) => (
+        <Link href={`/dashboard/events/${event.id}`} key={event.id} passHref>
+          <div className="border rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+            {/* Event Type Badge */}
+            <div className={`${getEventTypeColor(event.event_type)} h-2 w-full`} />
+            <div className="p-4">
+              <div className="flex items-start justify-between">
+                <h3 className="font-medium text-base line-clamp-1">{event.title}</h3>
+                <span className="text-xs rounded-full px-2 py-1 bg-gray-100 capitalize">
+                  {event.event_type}
+                </span>
+              </div>
+              
+              <p className="text-sm text-gray-500 mt-1 line-clamp-2">
+                {event.description || "No description provided."}
+              </p>
+              
+              <div className="mt-3 space-y-1.5">
+                <div className="flex items-center text-xs text-gray-600">
+                  <Calendar className="h-3.5 w-3.5 mr-1.5" />
+                  <span>
+                    {formatDate(event.start_date)}
+                    {new Date(event.start_date).toDateString() !== new Date(event.end_date).toDateString() &&
+                      ` - ${formatDate(event.end_date)}`
+                    }
+                  </span>
+                </div>
+                <div className="flex items-center text-xs text-gray-600">
+                  <Clock className="h-3.5 w-3.5 mr-1.5" />
+                  <span>{formatTime(event.start_date)} - {formatTime(event.end_date)}</span>
+                </div>
+                {event.location && (
+                  <div className="flex items-center text-xs text-gray-600">
+                    <MapPin className="h-3.5 w-3.5 mr-1.5" />
+                    <span className="truncate">{event.location}</span>
+                  </div>
+                )}
+                {event.max_participants !== undefined && event.max_participants !== null && (
+                  <div className="flex items-center text-xs text-gray-600">
+                    <Users className="h-3.5 w-3.5 mr-1.5" />
+                    <span>Capacity: {event.max_participants}</span>
+                  </div>
+                )}
+              </div>
+              
+              <div className="mt-3 flex justify-end">
+                <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusBadgeStyles(event.status)}`}>
+                  {event.status.charAt(0).toUpperCase() + event.status.slice(1)}
+                </span>
+              </div>
+            </div>
+          </div>
+        </Link>
+      ))}
+    </div>
+  );
+}
+
+function Pagination({
+  currentPage,
+  totalPages,
+  totalEvents,
+  eventsPerPage,
+  onPageChange
+}: Readonly<{
+  currentPage: number;
+  totalPages: number;
+  totalEvents: number;
+  eventsPerPage: number;
+  onPageChange: (page: number) => void;
+}>) {
+  if (totalPages <= 1) return null;
+  
+  return (
+    <div className="flex justify-between items-center mt-6">
+      <div className="text-sm text-gray-500">
+        Showing {((currentPage - 1) * eventsPerPage) + 1} - {Math.min(currentPage * eventsPerPage, totalEvents)} of {totalEvents}
+      </div>
+      <div className="flex gap-1">
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={currentPage === 1}
+          onClick={() => onPageChange(currentPage - 1)}
+        >
+          Previous
+        </Button>
+        {Array.from({ length: totalPages }).map((_, i) => {
+          const pageNumber = i + 1;
+          return (
+            <Button
+              key={`page-${pageNumber}`}
+              variant={currentPage === pageNumber ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => onPageChange(pageNumber)}
+            >
+              {pageNumber}
+            </Button>
+          );
+        }).slice(Math.max(0, currentPage - 3), Math.min(totalPages, currentPage + 2))}
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={currentPage === totalPages}
+          onClick={() => onPageChange(currentPage + 1)}
+        >
+          Next
+        </Button>
+      </div>
+    </div>
+  );
+}
 
 export default function EventsPage() {
   const router = useRouter();
@@ -82,7 +263,7 @@ export default function EventsPage() {
         if (error) throw error;
         
         setEvents(data || []);
-        setTotalEvents(count || 0);
+        setTotalEvents(count ?? 0);
       } catch (error) {
         console.error('Error fetching events:', error);
         toast.error('Failed to load events');
@@ -128,6 +309,35 @@ export default function EventsPage() {
       hour: '2-digit',
       minute: '2-digit',
     });
+  };
+
+  // Function to render the appropriate content based on state
+  const renderContent = () => {
+    if (isLoading) {
+      return <LoadingState />;
+    }
+    
+    if (events.length === 0) {
+      return (
+        <EmptyState 
+          searchQuery={searchQuery} 
+          onCreateEvent={() => router.push('/dashboard/events/create')} 
+        />
+      );
+    }
+    
+    return (
+      <>
+        <EventsList events={events} formatDate={formatDate} formatTime={formatTime} />
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          totalEvents={totalEvents}
+          eventsPerPage={eventsPerPage}
+          onPageChange={handlePageChange}
+        />
+      </>
+    );
   };
 
   return (
@@ -212,134 +422,7 @@ export default function EventsPage() {
             </div>
           </CardHeader>
           <CardContent>
-            {isLoading ? (
-              <div className="py-8 text-center">Loading events...</div>
-            ) : events.length === 0 ? (
-              <div className="py-8 text-center">
-                <p className="text-muted-foreground">No events found</p>
-                {searchQuery && (
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Try adjusting your search or filters
-                  </p>
-                )}
-                <Button 
-                  variant="outline" 
-                  className="mt-4"
-                  onClick={() => router.push('/dashboard/events/create')}
-                >
-                  <CalendarPlus className="h-4 w-4 mr-2" />
-                  Create Your First Event
-                </Button>
-              </div>
-            ) : (
-              <>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-2">
-                  {events.map((event) => (
-                    <Link href={`/dashboard/events/${event.id}`} key={event.id} passHref>
-                      <div className="border rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow">
-                        {/* Event Type Badge */}
-                        <div className={`
-                          ${event.event_type === 'competition' ? 'bg-orange-500' : 
-                            event.event_type === 'training' ? 'bg-blue-500' : 
-                            event.event_type === 'workshop' ? 'bg-green-500' : 
-                            event.event_type === 'meeting' ? 'bg-purple-500' : 'bg-gray-500'} 
-                          h-2 w-full`}
-                        />
-                        <div className="p-4">
-                          <div className="flex items-start justify-between">
-                            <h3 className="font-medium text-base line-clamp-1">{event.title}</h3>
-                            <span className="text-xs rounded-full px-2 py-1 bg-gray-100 capitalize">
-                              {event.event_type}
-                            </span>
-                          </div>
-                          
-                          <p className="text-sm text-gray-500 mt-1 line-clamp-2">
-                            {event.description || "No description provided."}
-                          </p>
-                          
-                          <div className="mt-3 space-y-1.5">
-                            <div className="flex items-center text-xs text-gray-600">
-                              <Calendar className="h-3.5 w-3.5 mr-1.5" />
-                              <span>
-                                {formatDate(event.start_date)}
-                                {new Date(event.start_date).toDateString() !== new Date(event.end_date).toDateString() &&
-                                  ` - ${formatDate(event.end_date)}`
-                                }
-                              </span>
-                            </div>
-                            <div className="flex items-center text-xs text-gray-600">
-                              <Clock className="h-3.5 w-3.5 mr-1.5" />
-                              <span>{formatTime(event.start_date)} - {formatTime(event.end_date)}</span>
-                            </div>
-                            {event.location && (
-                              <div className="flex items-center text-xs text-gray-600">
-                                <MapPin className="h-3.5 w-3.5 mr-1.5" />
-                                <span className="truncate">{event.location}</span>
-                              </div>
-                            )}
-                            {event.max_participants && (
-                              <div className="flex items-center text-xs text-gray-600">
-                                <Users className="h-3.5 w-3.5 mr-1.5" />
-                                <span>Capacity: {event.max_participants}</span>
-                              </div>
-                            )}
-                          </div>
-                          
-                          <div className="mt-3 flex justify-end">
-                            <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                              event.status === 'scheduled' 
-                                ? 'bg-green-100 text-green-800' 
-                                : event.status === 'cancelled'
-                                ? 'bg-red-100 text-red-800'
-                                : 'bg-gray-100 text-gray-800'
-                            }`}>
-                              {event.status.charAt(0).toUpperCase() + event.status.slice(1)}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    </Link>
-                  ))}
-                </div>
-                
-                {/* Pagination */}
-                {totalPages > 1 && (
-                  <div className="flex justify-between items-center mt-6">
-                    <div className="text-sm text-gray-500">
-                      Showing {((currentPage - 1) * eventsPerPage) + 1} - {Math.min(currentPage * eventsPerPage, totalEvents)} of {totalEvents}
-                    </div>
-                    <div className="flex gap-1">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        disabled={currentPage === 1}
-                        onClick={() => handlePageChange(currentPage - 1)}
-                      >
-                        Previous
-                      </Button>
-                      {Array.from({ length: totalPages }).map((_, i) => (
-                        <Button
-                          key={i}
-                          variant={currentPage === i + 1 ? 'default' : 'outline'}
-                          size="sm"
-                          onClick={() => handlePageChange(i + 1)}
-                        >
-                          {i + 1}
-                        </Button>
-                      )).slice(Math.max(0, currentPage - 3), Math.min(totalPages, currentPage + 2))}
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        disabled={currentPage === totalPages}
-                        onClick={() => handlePageChange(currentPage + 1)}
-                      >
-                        Next
-                      </Button>
-                    </div>
-                  </div>
-                )}
-              </>
-            )}
+            {renderContent()}
           </CardContent>
         </Card>
       </div>
